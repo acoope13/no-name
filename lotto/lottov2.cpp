@@ -1,126 +1,152 @@
-/*
-testFileData.txt
-Parker Robert 12345.67 8
-Longabaugh Harry 98765.43 2
-Place Etna 74900.50 6.1
-*/
-
-
-
-/****************************************************
- *													*
- *	Program is designed to:                         *
- *		1) read pdf file for input data             *
- *		2) analyze based on series of if statements *
- *		3) output total winnings and ROI per ticket *
- *													*
- ****************************************************/
-
-
 #include <iostream>
 #include <iomanip>
 #include <string>
 #include <fstream>
 
+//This was found on StackOverflow.com
+template<typename charT, typename traits = std::char_traits<charT> >
+class center_helper {
+    std::basic_string<charT, traits> str_;
+public:
+    center_helper(std::basic_string<charT, traits> str) : str_(str) {}
+    template<typename a, typename b>
+    friend std::basic_ostream<a, b>& operator<<(std::basic_ostream<a, b>& s, const center_helper<a, b>& c);
+};
 
+template<typename charT, typename traits = std::char_traits<charT> >
+center_helper<charT, traits> centered(std::basic_string<charT, traits> str) {
+    return center_helper<charT, traits>(str);
+}
 
+// redeclare for std::string directly so we can support anything that implicitly converts to std::string
+center_helper<std::string::value_type, std::string::traits_type> centered(const std::string& str) {
+    return center_helper<std::string::value_type, std::string::traits_type>(str);
+}
+
+template<typename charT, typename traits>
+std::basic_ostream<charT, traits>& operator<<(std::basic_ostream<charT, traits>& s, const center_helper<charT, traits>& c) {
+    std::streamsize w = s.width();
+    if (w > c.str_.length()) {
+        std::streamsize left = (w + c.str_.length()) / 2;
+        s.width(left);
+        s << c.str_;
+        s.width(w - left);
+        s << "";
+    } else {
+        s << c.str_;
+    }
+    return s;
+}
+
+void help();
+void logo();
 int isWin(int num1, int num2, int num3, int win1, int win2, int win3, int fbWin);
 int earningsCalculator(int winType);
-int readFile (std::string fileName, int in1, int in2, int in3, bool brute);
+int readFile (std::string fileName, int in1, int in2, int in3, bool brute, int* cost, int* roi);
 bool fileTest(std::string fileName);
-void autoScan(std::string fileName, bool brute);
+void autoScan(std::string fileName, bool brute, int* cost, int* roi);
 
 int main() {
+	//displays ASCII text on startup
+	logo();
+
 	//variable declaration
 	char in1, in2, in3;
 	int num1, num2, num3; //fbNum;
 	std::string input, file;
 	bool test, brute;
+	int cost, roi;
 	
 
 	//while loop to repeat program
 	while (input != "exit") {
 		//main prompt
-
-		
-    	std::cout << "Enter filename to read, or type 'exit' to end program: ";
+		std::cout << "Enter 'exit' to end program, or enter 'help' for more info.\n";
+		std::cout << "Enter a year to read (YYYY):\n>";
 		std::cin >> input;
 		std::cout << std::endl;
 
 		if (input == "exit") {
 			break;
 		}
+		else if (input == "help") {
+			help();
+			continue;
+		}
 
-		test = fileTest(input);
+		test = fileTest(input + ".txt");
 		if (test == 1) {
 			continue;
 		}
-		file = input;
+		
+		file = input + ".txt";
 
 		loop_return:
-		std::cout << "Run automatic scan? (y/n): ";
+		std::cout << "Run automatic scan? (y/n):\n>";
 		std::cin >> input;
 		std::cout << std::endl;
 
 		if (input == "y") {
 			brute = true;
-			autoScan(file, brute);
+			autoScan(file, brute, &cost, &roi);
 		}
 		else if (input == "n") {
 		    brute = false;
+			
+			while (0 == 0) {
+				std::cout << "Enter ticket numbers, or 'q' to return to year selection:\n>";
+				//std::cin >> in1;
+				std::cin >> in1;
 
-        while (test == 0) {
-		std::cout << "Enter ticket numbers: ";
-		//std::cin >> in1;
-		std::cin >> in1;
+				if (in1 == 'q') {
+					std::cin.clear();
+					std::cin.ignore();
+					std::cout << std::endl;
+					break;
+				}
+				
+				std::cin>> in2 >> in3;
+				std::cin.clear();
+				std::cin.ignore();
+		//		std::cout << "\n";
+				
+				
+				//convert char to ascii value integer
+				num1 = static_cast<int>(in1);
+				num2 = static_cast<int>(in2);
+				num3 = static_cast<int>(in3);
+				
+				//convert ascii value to original integer value
+				num1 -= 48;
+				num2 -= 48;
+				num3 -= 48;
+				
+				
+				// ticket numbers must be 0 - 9
+				if ((num1  > 9 ) || (num2 > 9) || (num3 > 9) || (num1 < 0 ) || (num2 < 0 ) || (num3 < 0)) {
+					std::cout << "Invalid ticket numbers. Try again\n";
+					continue;
+				}
 
-		if (in1 == 'q') {
-		    std::cin.clear();
-		    std::cin.ignore();
-		    break;
-		}
-		
-		std::cin>> in2 >> in3;
-		std::cin.clear();
-		std::cin.ignore();
-//		std::cout << "\n";
-		
-		
-		//convert char to ascii value integer
-		num1 = static_cast<int>(in1);
-		num2 = static_cast<int>(in2);
-		num3 = static_cast<int>(in3);
-		
-		//convert ascii value to original integer value
-		num1 -= 48;
-		num2 -= 48;
-		num3 -= 48;
-		
-		
-		// ticket numbers must be 0 - 9
-		if ((num1  > 9 ) || (num2 > 9) || (num3 > 9) || (num1 < 0 ) || (num2 < 0 ) || (num3 < 0)) {
-		    std::cout << "Invalid ticket numbers. Try again\n";
-		    continue;
-		}
-
-		readFile(file, num1, num2, num3, brute);
-		
-        } //end of while loop
-		} //end of if
+				readFile(file, num1, num2, num3, brute, &cost, &roi);
+				
+			} //end of while loop
+		} //end of else if
 
 		else {
 			std::cout << "invalid input" << std::endl;
 			goto loop_return;
 		}
+
+
 	} // end of while loop
 	return 0;
 }
 
-//function definitions:
-
 //function to determine win and what type
-//returns integer value to determine win type
 /*
+returns integer value to determine win type:
+
 0 = none
 1 = straight
 3 = box
@@ -139,6 +165,16 @@ int main() {
 19 = box + fbStraight + fbBox
 
 */
+
+void logo(){
+	std::cout << std::setw(64) << std::setfill('*') << "*" << std::endl;
+	std::cout << "*" << std::setw(63) << std::setfill(' ') << "*" << std::endl;
+	std::cout << "*" << std::setw(62) << centered("NJ Pick 3 Lotto Tool") << "*" << std::endl;
+	std::cout << "*" << std::setw(62) << centered("Version 0.2.1") << "*" << std::endl;
+	std::cout << "*" << std::setw(63) << std::setfill(' ') << "*" << std::endl;
+	std::cout << std::setw(64) << std::setfill('*') << "*" << std::endl << std::endl;
+}
+
 int isWin(int num1, int num2, int num3, int win1, int win2, int win3, int fbWin) {
 	/*
 	types of wins:
@@ -299,10 +335,9 @@ int earningsCalculator(int winType) {
 } //returns running total of winnings
 
 
-int readFile (std::string fileName, int in1, int in2, int in3, bool brute) {
+int readFile (std::string fileName, int in1, int in2, int in3, bool brute, int* cost, int* roi) {
 std::ifstream inputFile(fileName);
 
-	std::ofstream outputfile("output.txt");
     int i;
 	int count = 0;
 	int n = 0;
@@ -335,45 +370,49 @@ std::ifstream inputFile(fileName);
 			//outputfile << date << std::endl;
 			}
 		}
-		
-
-        //inputFile.ignore(' ', 10) >> streamString;
-//        std::cout << line << "\n";
-            //<< line << "\n";
-            
+ 
         while ( (48 > static_cast<int>(line[i])) && (57 < static_cast<int>(line[i])) ) {
             i++;
              //std::cout << line[i];
         }
+
+		//midday drawings
 		if (line[i - 2] == 'Y') {
-        num0 = line[i];
-        i++;
-        num1 = line[i];
-        i++;
-        num2 = line[i];
-        i += 2;
-        num3 = line[i];
-//        std::cout << num0 << num1 << num2 << num3 << std::endl;
+			num0 = line[i];
+			i++;
+			num1 = line[i];
+			i++;
+			num2 = line[i];
+			i += 2;
+			num3 = line[i];
 		}
+
+		//evening drawings
 		else {
-		//i -= 3;
-		// results in "ING#"
+			i++; 
 
-		i++; //works
-
-		if (('0' <= line[i])&&(line[i] <= '9')) { 
-		num0 = line[i];
-        i++;
-        num1 = line[i];
-        i++;
-        num2 = line[i];
-        i += 2;
-        num3 = line[i];
-
-//        std::cout << num0 << num1 << num2 << num3 << std::endl;
-		}
-
-		inputFile.ignore();
+			//handles str/back lines
+			if (line[30] == 'S') {
+// for testing  	std::cout << "STR/BACK!!!!\n";
+				num0 = line[i];
+				i++;
+				num1 = line[i];
+				i++;
+				num2 = line[i];
+				i += 23;
+				num3 = line[i];
+			}
+			// non-str/back lines
+			else if (('0' <= line[i])&&(line[i] <= '9')) { 
+				num0 = line[i];
+				i++;
+				num1 = line[i];
+				i++;
+				num2 = line[i];
+				i += 2;
+				num3 = line[i];
+			}
+			inputFile.ignore();
 		} //end of else
 		
 		
@@ -385,19 +424,16 @@ std::ifstream inputFile(fileName);
 		int winCheck = isWin(in1, in2, in3, w1, w2, w3, wf);
 		
 		runningTotal += earningsCalculator(winCheck);
-
-		
     } // end of while loop
-    int cost = (count * 2);
-    
-    std::cout << std::fixed << std::setprecision(0);
+
+    *cost = (count * 2);
+	*roi = (runningTotal * 100 / (count * 2));
 
 if (brute == 0){
    std::cout << "total: $" << runningTotal << "\n";
-   std::cout << "Cost: $" << cost << "\n";
-   std::cout << "Return: " << (runningTotal / cost) * 100 << "%\n";
-//   std::cout << "Lines read: " << count << "\n";
-//   std::cout << "Lines total: " << n << "\n\n";
+   std::cout << "Cost: $" << *cost << "\n";
+   std::cout << "Return: " << runningTotal * 100 / *cost << "%\n\n";
+
 // Close the file
     inputFile.close();
 }
@@ -425,37 +461,31 @@ bool fileTest (std::string fileName) {
 }
 
 
-void autoScan(std::string fileName, bool brute) {
+void autoScan(std::string fileName, bool brute, int* cost, int* roi) {
+	//intilization
 	int num[3] = {0, 0, 0};
     std::ofstream outFile("temp.txt");
     int total, record;
     int win[3] = {0, 0, 0};
+	*roi = 0;
+	*cost = 0;
+	total = 0;
     
-   
-/* test lines
-	std::cout <<fileName << std::endl;
-	std::cout << num[0] << std::endl 
-			  << num[1] << std::endl 
-			  << num[2] << std::endl;
-*/
-outFile << "Numbers\t\t"
-             << "Earnings\t\t"
-             << "Play count\n";
-             
-             
-//	while ((num[0] != 9) && (num[1] != 9) && (num[2] != 9)) {
+	outFile << "Year: ";
+	for (int i = 0; i < 4; i++){
+		outFile << fileName[i];
+	} 
+	outFile << std::endl
+			<< "Numbers\t\t"
+			<< "Earnings\t\t\n";
+    
 	while (brute == true) {
-        
-        
-        //import and modify later
-        // need $ val return funct
-		record = readFile(fileName, num[0], num[1], num[2], brute);
+		record = readFile(fileName, num[0], num[1], num[2], brute, cost, roi);
 		
-        // need lines to obtain value
         if (record >= total){
             total = record;
-            outFile << num[0] << num[1]
-                         << num[2] << total << "\n";
+            outFile << num[0] << "-" << num[1] << "-" << num[2] << std::setw(8);// "\t";
+			outFile << "$" << total << "\t" << "\n";
             win[0] = num[0];
             win[1] = num[1];
             win[2] = num[2];
@@ -483,25 +513,34 @@ outFile << "Numbers\t\t"
                 }
             }
         }
-
-		/*test lines
-    	for (int i = 0; i < 3; i++) {
-        std::cout << num[i];
-	    }
-	    std::cout << std::endl;
-		*/
 	} // end of loop
+
+	std::cout << "Highest paying ticket: ";
 	for (int i = 0; i < 3; i++){
 	std::cout << win[i];
-	//std::cout << i;
 	}
+	*roi = (total * 100) / *cost;
 	std::cout << std::endl;
     std::cout << "$" << total << std::endl;
-
+	std::cout << "cost: $" << *cost << std::endl;
+	std::cout << "Return: " << *roi << "%" << std::endl << std::endl;
 } // end of autoScan function
 
-/* 
-    pass a bool value as switch for auto scan if statement in file read function
-    will determine cout output & return values
+void help() {
+	std::string pause;
 
-*/
+	std::cout << "This program is designed to test ticket numbers for the New Jersey Pick 3 lottery.\n";
+	std::cout << "Based on the assumption that one buys the same ticket every day for a year,\n";
+	std::cout << "it will calculate the cost, payout, and return for that ticket.\n";
+	std::cout << "As of this current version, it will only calculate the ticket as a Straight/Box of \n";
+	std::cout << "$0.50 wager, with the fireball option, playing both daily drawings.\n";
+	std::cout << "This program currently does not calculate 'Straight Back' bonus winnings.\n";
+	std::cout << "Total ticket cost is $4 per day.\n\n";
+	std::cout << "The automatic function will scan every possible ticket value, and determine the\n";
+	std::cout << "highest paying ticket for that year. Starting with 0-0-0, it will also print \n";
+	std::cout << "ticket numbers with higher payouts than the previously tested ticket. These values can be\n";
+	std::cout << "found in the file \"temp.txt\". This file is overwritten for each automatic scan.\n\n";
+	std::cout << "Enter any key to continue.\n";
+	std::cin >> pause;
+ 	std::cout << std::endl << std::endl;
+} // end of Help function
